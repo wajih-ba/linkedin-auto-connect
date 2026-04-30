@@ -1,0 +1,11 @@
+Chrome_profile/
+downloaded_files/
+users.db
+users.db-journal
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.venv/
+instance/
