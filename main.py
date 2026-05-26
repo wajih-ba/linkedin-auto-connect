@@ -9,8 +9,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
+import csv
 
-def create_driver(headless=True):
+def create_driver(headless=False):
     return Driver(uc=True, headless=headless)
 
 def click_connect_button(driver,rep):
@@ -20,9 +21,10 @@ def click_connect_button(driver,rep):
             rept  = rep%20
             rep = 0
         for _ in range(1,rept+1):
+            # More dynamic selectors that work across all profiles
             connect_xpath = f"//*[@id='workspace']/div/div/section/section/div/div[2]/div/div/div[2]/div/div[{_}]/a/div/div[2]/div/button"
             name_xpath = f"//*[@id='workspace']/div/div/section/section/div/div[2]/div/div/div[2]/div/div[{_}]/a/div/div[1]/div/div[1]/p/span/span[2]"
-            title_xpath = f"//*[@id='workspace']/div/div/section/section/div/div[2]/div/div/div[2]/div/div[{_}]/a/div/div[1]/div/div[2]/p/span"
+            title_xpath = f"//*[@id='workspace']/div/div/section/section/div/div[2]/div/div/div[2]/div/div[{_}]/a/div/div[1]/div/div[2]/p"
             try:
                 connect_button = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, connect_xpath)))
                 time.sleep(random.uniform(0.5,1))  # Small delay to ensure the button is fully interactable
@@ -30,7 +32,6 @@ def click_connect_button(driver,rep):
                 name_element = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, name_xpath)))
                 title_element = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, title_xpath)))
 
-                import csv
                 
                 # Save to CSV file
                 try:
@@ -66,45 +67,44 @@ def click_connect_button(driver,rep):
         rep -=20
         driver.refresh()
 def login (driver):
-    email = input("Enter your LinkedIn email: ")
-    password = input("Enter your LinkedIn password: ")    
-    email_xpath = "//*[@id='username']"
-    psw_xpath = "//*[@id='password']"
-    login_button_xpath = "//*[@id='organic-div']/form/div[4]/button"
+    print(driver.current_url)
+    while driver.current_url in "https://www.linkedin.com/login/":    
+        email = input("Enter your LinkedIn email: ")
+        password = input("Enter your LinkedIn password: ")    
+        email_xpath = "//*[@id='username']"
+        psw_xpath = "//*[@id='password']"
+        login_button_xpath = "//*[@id='organic-div']/form/div[4]/button"
 
-    try:
-        WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, email_xpath))).send_keys(email)
-        WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, psw_xpath))).send_keys(password)
-        WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, login_button_xpath))).click()
-    except Exception as exc:    
         try:
-            login_button_xpath = "//*[@id='workspace']/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[2]/div/div[3]/button"
-            email_xpath = "//*[@id=':r3:']"
-            psw_xpath = "//*[@id=':r4:']"
             WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, email_xpath))).send_keys(email)
             WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, psw_xpath))).send_keys(password)
             WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, login_button_xpath))).click()
-        except Exception as exc:
-                print(f"Error during login: {exc}")
-                return False
-    
-    # Check if login was successful
-    try:
-        WebDriverWait(driver, 2).until(lambda d: "linkedin.com/feed" in d.current_url or "linkedin.com/mynetwork" in d.current_url or "linkedin.com/checkpoint" in d.current_url)
-        if "checkpoint" in driver.current_url:
-            driver.activate_cdp_mode(driver.current_url)
-            time.sleep(29)
-            print("Login requires additional verification (2FA or security check). Please complete it manually in the browser.")
-            return False
-        return True
-    except Exception:
-        print("Login failed - credentials may be incorrect or there's a login issue.")
-        return False
+        except Exception as exc:    
+            try:
+                login_button_xpath = "//*[@id='workspace']/div/div[2]/div/div[1]/div/div/div[2]/div/div/div/div[2]/div/div[3]/button"
+                email_xpath = "//*[@id=':r3:']"
+                psw_xpath = "//*[@id=':r4:']"
+                WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, email_xpath))).send_keys(email)
+                WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, psw_xpath))).send_keys(password)
+                WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, login_button_xpath))).click()
+            except Exception as exc:
+                    print(f"Error during login: {exc}")
+
+        # Check if login was successful
+        try:
+            WebDriverWait(driver, 2).until(lambda d: "linkedin.com/feed" in d.current_url or "linkedin.com/mynetwork" in d.current_url or "linkedin.com/checkpoint" in d.current_url)
+            if "checkpoint" in driver.current_url:
+                driver.activate_cdp_mode(driver.current_url)
+                print("Login requires additional verification (2FA or security check). Please complete it manually in the browser.")
+        except Exception:
+            print("Login failed - credentials may be incorrect or there's a login issue.")
+            driver.refresh()
 def accept_button(driver):
     
     i=1
     while True:
-        accept_xpath = f"//*[@id='workspace']/div/div/div[1]/section/div/div[2]/div/div/div[{i}]/div/div[1]/div/div/div[2]/div[2]/button"
+        # Dynamic selector for accept buttons across all profiles
+        accept_xpath = f"//button[contains(@aria-label, 'Accept') or contains(., 'Accept')][{i}]"
         try:
             accept_button = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, accept_xpath)))
             time.sleep(random.uniform(0.5, 1))  # Small delay to ensure the button is fully interactable
@@ -117,10 +117,11 @@ def main() :
     driver = create_driver()
     login_url = "https://www.linkedin.com/login/"
     driver.get(login_url)
-    if not login(driver):
-        print("Login unsuccessful. Exiting.")
-        driver.quit()
-        sys.exit(1)
+    login(driver)
+    #if not login(driver):
+    #    print("Login unsuccessful. Exiting.")
+    #    driver.quit()
+    #    sys.exit(1)
     try:
         print("Login successful. Proceeding...")
         driver.get("https://www.linkedin.com/mynetwork/invitation-manager/")
