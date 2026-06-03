@@ -2,18 +2,13 @@
 
 Automate LinkedIn connection requests using Playwright and Python.
 
-This tool logs into LinkedIn, navigates through search results, automatically sends connection requests, and stores processed profiles in CSV files to avoid duplicates.
-
-> ⚠️ Disclaimer: This project is for educational purposes only. Using automation on LinkedIn may violate LinkedIn's Terms of Service. Use at your own risk.
-
----
+This tool logs into LinkedIn, navigates through search results, automatically sends connection requests, and stores processed profiles in CSV files.
 
 ## Features
 
 * Secure LinkedIn login
 * Automated connection requests
 * CSV tracking of processed profiles
-* Colored terminal output
 * Configurable delays to mimic human behavior
 * Pagination support
 * Duplicate prevention
@@ -27,47 +22,11 @@ This tool logs into LinkedIn, navigates through search results, automatically se
 * Google Chrome
 * Playwright
 
----
-
-## Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/wajih-ba/linkedin-auto-connect.git
-cd linkedin-auto-connect
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
 
 Install Playwright browsers:
 
 ```bash
 playwright install
-```
-
----
-
-## Configuration
-
-You can provide your LinkedIn credentials using environment variables.
-
-### Windows
-
-```cmd
-set LINKEDIN_EMAIL=your_email@example.com
-set LINKEDIN_PASSWORD=your_password
-```
-
-### Linux / macOS
-
-```bash
-export LINKEDIN_EMAIL="your_email@example.com"
-export LINKEDIN_PASSWORD="your_password"
 ```
 
 If credentials are not provided, the script will prompt for them at runtime.
@@ -112,13 +71,7 @@ linkedin-auto-connect/
 ├── requirements.txt
 ├── README.md
 ├── data/
-│   ├── connected_profiles.csv
-│   └── processed_profiles.csv
-└── logs/
-    └── logs.csv
 ```
-
----
 
 ## Safety Recommendations
 
