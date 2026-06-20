@@ -608,7 +608,7 @@ def read_title_keywords() -> tuple[list[str], Optional[str]]:
 def run(playwright: Playwright) -> None:
     browser = playwright.chromium.launch(
         channel="msedge",
-        headless=False,
+        headless=True,
         args=[
             "--disable-blink-features=AutomationControlled",
         ],
