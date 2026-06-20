@@ -380,6 +380,9 @@ class LinkedInAutomation:
     def _try_accept(self) -> bool:
         for btn in self._find_buttons(ACCEPT_RE):
             person = extract_person(btn, self.page)
+            if self.keywords and not title_matches(person.title, self.keywords):
+                print_action(" SKIP  ", C.BG_YELLOW, person)
+                continue
             if safe_click(btn):
                 append_csv(ACCEPT_CSV, person)
                 print_action("ACCEPT ", C.BG_GREEN, person)
@@ -400,7 +403,7 @@ class LinkedInAutomation:
                 label = ""
             name = name_from_aria(label) or ""
             link.click()
-            time.sleep(1)
+            time.sleep(0.4)
             send_btn = self.page.get_by_role("button", name=re.compile(r"^Send without a note$", re.IGNORECASE))
             if send_btn.count() > 0:
                 send_btn.click()
@@ -637,7 +640,6 @@ def run(playwright: Playwright) -> None:
             page.wait_for_timeout(2500)
             
         title_keywords, search_url = read_title_keywords()
-        target_url = search_url or "https://www.linkedin.com/mynetwork/invitation-manager/received/"
         max_connect = read_connect_limit()
 
         max_total = 2000
@@ -657,20 +659,58 @@ def run(playwright: Playwright) -> None:
         total_connect = 0
         connects_per_page = 10
 
-        while True:
-            if base_search_url:
-                target_url = f"{base_search_url}&page={page_num}"
+        # ---------------------------------------------------------------
+        # Phase 1 — Accept pending invitations
+        # ---------------------------------------------------------------
+        invite_url = "https://www.linkedin.com/mynetwork/invitation-manager/received/"
+        page.goto(invite_url, wait_until="domcontentloaded")
+
+        print(f"\n{C.BOLD}{C.BG_GREEN}{'─' * 64}{C.RESET}")
+        print(f"  {C.BOLD}{C.WHITE}Phase 1 — Accepting pending invitations …{C.RESET}")
+        if title_keywords:
+            print(f"  {C.DIM}Filter: title must contain → {', '.join(title_keywords)}{C.RESET}")
+        print(f"{C.BOLD}{C.BG_GREEN}{'─' * 64}{C.RESET}\n")
+
+        automation = LinkedInAutomation(
+            page,
+            max_connect=0,
+            keywords=title_keywords,
+            connect_refresh_every=20,
+            max_total_clicks=max_total,
+        )
+        accept_count, _ = automation.run()
+        total_accept += accept_count
+
+        print(f"\n  {badge('ACCEPT ', C.BG_GREEN)}  {C.GREEN}{accept_count:>6}{C.RESET}   Invitation manager\n")
+
+        # ---------------------------------------------------------------
+        # Phase 2 — Connect via search results (if a search URL was given)
+        # ---------------------------------------------------------------
+        if base_search_url:
+            print(f"\n{C.BOLD}{C.BG_CYAN}{'─' * 64}{C.RESET}")
+            print(f"  {C.BOLD}{C.WHITE}Phase 2 — Connecting via search results …{C.RESET}")
+            if title_keywords:
+                print(f"  {C.DIM}Filter: title must contain → {', '.join(title_keywords)}{C.RESET}")
+            print(f"{C.BOLD}{C.BG_CYAN}{'─' * 64}{C.RESET}\n")
+
+        empty_pages = 0
+        while base_search_url:
+            target_url = f"{base_search_url}&page={page_num}"
             page.goto(target_url, wait_until="domcontentloaded")
 
             print(f"\n{C.BOLD}{C.CYAN}{'─' * 64}{C.RESET}")
-            print(f"  {C.BOLD}{C.WHITE}Starting LinkedIn automation …{C.RESET}")
+            print(f"  {C.BOLD}{C.WHITE}Search page {page_num} …{C.RESET}")
             if title_keywords:
                 print(f"  {C.DIM}Filter: title must contain → {', '.join(title_keywords)}{C.RESET}")
-            if base_search_url:
-                print(f"  {C.DIM}Page: {page_num}{C.RESET}")
             print(f"{C.BOLD}{C.CYAN}{'─' * 64}{C.RESET}\n")
 
-            page_max = connects_per_page if base_search_url else max_connect
+            remaining = None
+            if max_connect is not None:
+                remaining = max_connect - total_connect
+                if remaining <= 0:
+                    break
+
+            page_max = min(connects_per_page, remaining) if remaining is not None else connects_per_page
             automation = LinkedInAutomation(
                 page,
                 max_connect=page_max,
@@ -678,29 +718,22 @@ def run(playwright: Playwright) -> None:
                 connect_refresh_every=20,
                 max_total_clicks=max_total,
             )
-            accept_count, connect_count = automation.run()
-
-            total_accept += accept_count
+            _, connect_count = automation.run()
             total_connect += connect_count
 
-            # Summary per page
-            print(f"\n{C.BOLD}{C.CYAN}{'─' * 64}{C.RESET}")
-            print(f"  {C.BOLD}{'Action':<14}{C.RESET}  {'Count':>6}")
-            print(f"  {C.DIM}{'─' * 60}{C.RESET}")
-            print(f"  {badge('ACCEPT ', C.BG_GREEN)}  {C.GREEN}{accept_count:>6}{C.RESET}   Page {page_num}")
-            print(f"  {badge('CONNECT', C.BG_CYAN)}  {C.CYAN}{connect_count:>6}{C.RESET}   Page {page_num}")
-            print(f"{C.BOLD}{C.CYAN}{'─' * 64}{C.RESET}\n")
-
-            if not base_search_url:
-                break
+            print(f"\n  {badge('CONNECT', C.BG_CYAN)}  {C.CYAN}{connect_count:>6}{C.RESET}   Page {page_num}\n")
 
             if max_connect is not None and total_connect >= max_connect:
                 logger.info("Reached total Connect limit. Stopping pagination.")
                 break
 
-            if connect_count < connects_per_page:
-                logger.info("Page %d exhausted — no more connections found.", page_num)
-                break
+            if connect_count == 0:
+                empty_pages += 1
+                if empty_pages >= 3:
+                    logger.info("3 consecutive pages with no connects. Stopping.")
+                    break
+            else:
+                empty_pages = 0
 
             page_num += 1
 
