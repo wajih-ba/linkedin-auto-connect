@@ -1,35 +1,8 @@
-#!/usr/bin/env python3
-"""
-LinkedIn invitation manager automation (optimized).
-
-What it does
-------------
-* Logs into LinkedIn (env vars or interactive prompt).
-* Accepts all received invitations.
-* Sends connection requests from the "People you may know" list with an
-  optional title keyword filter.
-* Writes results to accept.csv / connect.csv.
-
-Improvements over the original
-------------------------------
-* No hard-coded credentials.
-* Removes the fragile global ``count_``/absolute-XPath logic.
-* Uses semantic card containers and profile links to extract name/title.
-* Safer clicking with timeout + JavaScript fallback.
-* Cleaner control flow (class-based state machine).
-* Handles LinkedIn weekly invitation-limit banners.
-* Scrolls with JS fallback instead of relying on mouse wheel.
-* Logs skipped keyword misses so you can see what was filtered out.
-"""
-
-from __future__ import annotations
-
 import csv
 import getpass
 import logging
 import os
 import re
-import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
